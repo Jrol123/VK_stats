@@ -1,5 +1,5 @@
 # Files
-/main.py
+main.py
 
 #ETC
 
@@ -109,3 +109,4 @@ ipython_config.py
 #   git rm -r .ipynb_checkpoints/
 
 # End of https://www.toptal.com/developers/gitignore/api/jetbrains+all,jupyternotebooks
+.env
