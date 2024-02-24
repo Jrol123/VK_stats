@@ -1,3 +1,5 @@
+from math import ceil
+
 import vk_api
 import csv
 from datetime import datetime
@@ -12,16 +14,42 @@ vk = vk_api.VkApi(
 id_chat = int(secrets['CHAT_ID'])
 
 
-def get_stat(peer_id: int, count: int) -> dict:
-    return vk.method('messages.getHistory', {'peer_id': peer_id, 'count': count})
+def get_chat(peer_id: int = id_chat + 2e9, count: int = 200, offset: int = 0) -> dict:
+    """
+
+    Позволяет получить сообщения из чата.
+
+    :param peer_id: id чата.
+        Работает через peer
+    :type peer_id: int
+    :param count: Количество получаемых сообщений <= 200
+    :type count: int
+    :param offset: Сдвиг от начального сообщения
+    :type offset: int
+
+    :return: Словарь с сообщениями и их параметрами
+    :rtype: dict
+
+    """
+    return vk.method('messages.getHistory', {'peer_id': peer_id, 'count': count, 'offset': offset, 'rev': 1})
 
 
-def get_chat(chat_id: int) -> dict:
+def get_names(chat_id: int = id_chat) -> dict:
+    """
+
+    Определение активных пользователей чата.
+
+    Не определяет тех, кого удалили из чата.
+
+    :param chat_id: id чата
+    :type chat_id: int
+
+    :return: Словарь с активными пользователями и их именами
+    :rtype: dict
+    """
     return vk.method('messages.getChat', {'chat_id': chat_id, 'fields': 'nickname'})
 
 
-response = get_stat(id_chat + 2e9, 200)
-chat = get_chat(id_chat)
 chat_userList = get_names()
 
 user_list = {657900781: "DEAD1",
@@ -96,28 +124,39 @@ user_list = {657900781: "DEAD1",
              224258182: "Семён Аладин"}
 "Список удалённых пользователей из CHAT_ID"
 
-for item in chat['users']:
-    user_list[item['id']] = item['first_name'] + " " + item['last_name']
+for user in chat_userList['users']:
+    user_list[user['id']] = user['first_name'] + " " + user['last_name']
 
-print()
+response = get_chat(count=1)
+length_chat = response['count']
 
-for item in response['items']:
+print(int(ceil(length_chat / 200)))
 
-    if item.get('action'):
-        continue
-    if item.get('attachments') and item['attachments'][0]['type'] == 'sticker':
+for times_add in range(877, int(ceil(length_chat / 200))):
+    print(times_add)
+    delta = 200 * times_add
+    response = get_chat(count=min(200, length_chat - delta), offset=delta)
+    for item in response['items']:
+
+        if item.get('action'):
+            continue
+        if item.get('attachments') and item['attachments'][0]['type'] == 'sticker':
+            print(
+                f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} /—/ *стикер*")
+            continue
+        if item.get('attachments') and item['attachments'][0]['type'] == 'doc':
+            print(
+                f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} /—/ *документ/гифка*")
+            continue
+        if item.get('attachments') and item['attachments'][0]['type'] == 'photo' and item['text'] == "":
+            print(
+                f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} /—/ *фото без подписи*")
+            continue
+        if item.get('reactions'):
+            print('РЕАКЦИЯ!')
+            print(
+                f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} — {item['text']} — {item['reactions']}")
+            print('РЕАКЦИЯ!')
+            continue
         print(
-            f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} /—/ *стикер*")
-        continue
-    if item.get('attachments') and item['attachments'][0]['type'] == 'photo' and item['text'] == "":
-        print(
-            f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} /—/ *фото без подписи*")
-        continue
-    if item.get('reactions'):
-        print('РЕАКЦИЯ!')
-        print(
-            f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} — {item['text']} — {item['reactions']}")
-        print('РЕАКЦИЯ!')
-        continue
-    print(
-        f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} — {item['text']}")
+            f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} — {item['text']}")
