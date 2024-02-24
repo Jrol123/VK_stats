@@ -46,6 +46,7 @@ def get_names(chat_id: int = id_chat) -> dict:
 
     :return: Словарь с активными пользователями и их именами
     :rtype: dict
+
     """
     return vk.method('messages.getChat', {'chat_id': chat_id, 'fields': 'nickname'})
 
