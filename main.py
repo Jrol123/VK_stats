@@ -18,19 +18,43 @@ vk = vk_api.VkApi(
 id_chat = int(secrets['CHAT_ID'])
 
 
-def dowload_img(url: str) -> None:
+def download_image(url: str) -> None:
+    """
+
+    Функция загрузки изображения
+
+    :param url: URL адрес картинки
+    :type url: str
+
+    :return: Сохраняет картинку в папку
+        Каждая картинка появляется лишь 1 раз
+    :rtype: None
+
+    """
     file_name = (url.split("/")[-1]).split("?")[0]
+    """Имя картинки"""
 
     res = urllib3.request('GET', url)
-    with open(f'images/{file_name}', 'wb') as f:
+    with open(f'content/visual/images/{file_name}', 'wb') as f:
         f.write(res.data)
 
 
-def download_sticker(url: str) -> None:
-    file_name = (url.split("/")[-1]).split("?")[0]
+def download_sticker(id_sticker: int) -> None:
+    """
 
-    res = urllib3.request('GET', url)
-    with open(f'stickers/{file_name}', 'wb') as f:
+    Функция загрузки стикера
+
+    :param id_sticker: Номер стикера
+    :type id_sticker: int
+
+    :return: Сохраняет стикер в папку
+        Каждый стикер появляется лишь 1 раз
+        Стикеры сохраняются в формате .png в разрешении 512x512
+    :rtype: None
+
+    """
+    res = urllib3.request('GET', f"https://vk.com/sticker/1-{id_sticker}-512b")
+    with open(f'content/visual/stickers/{id_sticker}.png', 'wb') as f:
         f.write(res.data)
 
 
@@ -63,13 +87,39 @@ def get_chat(peer_id: int = id_chat, count: int = 200, offset: int = 0) -> dict:
                      )
 
 
-def get_fullname(user_id: int, full_msg: dict) -> str:
-    for profile in full_msg['profiles']:
+def get_fullname(user_id: int, full_response: dict) -> str:
+    """
+
+    Получение полного имени пользователя
+
+    API ВКонтакте выдаёт набор профилей пользователей, писавших сообщения
+    Производится перебор id профилей и подбор под user_id
+
+    :param user_id: ID пользователя
+    :param full_response: Расширенный набор сообщений
+
+    :return: ФИО в формате Имя + " " + Фамилия
+    :rtype: str
+
+    """
+    for profile in full_response['profiles']:
         if profile['id'] == user_id:
             return profile['first_name'] + ' ' + profile['last_name']
     return 'EMPTY_USER' + ' ' + str(user_id)
 
+
 def get_date(utc_date: int) -> str:
+    """
+
+    Перевод даты из UTC формата в нормальный формат
+
+    :param utc_date: Дата в формате utc
+    :type utc_date: int
+
+    :return: Дата в формате YYYY-MM-DD HH:MM:SS
+    :rtype: str
+
+    """
     return datetime.utcfromtimestamp(utc_date).strftime('%Y-%m-%d %H:%M:%S')
 
 
