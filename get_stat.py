@@ -135,7 +135,9 @@ length_chat = get_chat(count=1)['count']
 
 for times_add in range(int(ceil(length_chat / 200))):
     delta = 200 * times_add
+    """Отступ от первого сообщения"""
     response = get_chat(count=min(200, length_chat - delta), offset=delta)
+    """count сообщений после delta"""
     for item in response['items']:
         # Проверка на действие
         if item.get('action'):
@@ -144,7 +146,7 @@ for times_add in range(int(ceil(length_chat / 200))):
         date = get_date(item['date'])
         """Дата публикации сообщения"""
         username = get_fullname(item['from_id'], response)
-        """ИО пользователя"""
+        """ИФ пользователя"""
 
         # Загрузка доп данных
         if SHOULD_DOWNLOAD and item.get('attachments'):
