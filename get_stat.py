@@ -1,14 +1,13 @@
-from math import ceil
-
-import urllib3
+"""
+Файл, в котором показан процесс получения статистики
+"""
 
 import vk_api
-import csv
+import urllib3
+from math import ceil
 from datetime import datetime
 
 from dotenv import dotenv_values
-
-import urllib3
 
 secrets = dotenv_values(".env")
 """Секреты"""
@@ -105,7 +104,7 @@ def get_fullname(user_id: int, full_response: dict) -> str:
     :param user_id: ID пользователя
     :param full_response: Расширенный набор сообщений
 
-    :return: ФИО в формате Имя + " " + Фамилия
+    :return: ФИО в формате: Имя + " " + Фамилия
     :rtype: str
 
     """
@@ -142,40 +141,52 @@ for times_add in range(int(ceil(length_chat / 200))):
         if item.get('action'):
             continue
 
+        date = get_date(item['date'])
+        """Дата публикации сообщения"""
+        username = get_fullname(item['from_id'], response)
+        """ИО пользователя"""
+
         # Загрузка доп данных
-        if SHOULD_DOWNLOAD:
-            if item.get('attachments') and item['attachments'][0]['type'] == 'photo':
+        if SHOULD_DOWNLOAD and item.get('attachments'):
+            type_item = item['attachments'][0]['type']
+            if type_item == 'photo':
                 download_image(item['attachments'][0]['photo']['sizes'][-1]['url'])
-            if item.get('attachments') and item['attachments'][0]['type'] == 'sticker':
-                print(f"{get_date(item['date'])} — — {get_fullname(item['from_id'], response)} /—/ *стикер*")
+            elif type_item == 'sticker':
                 download_sticker(item['attachments'][0]['sticker']['sticker_id'])
                 continue
 
-        # Если есть прикрепляемый материал
-        if item.get('attachments') and item['attachments'][0]['type'] == 'audio':
-            print(
-                f"{get_date(item['date'])} — — {get_fullname(item['from_id'], response)} /—/ *аудио*")
-            continue
-        if item.get('attachments') and item['attachments'][0]['type'] == 'doc':
-            print(
-                f"{get_date(item['date'])} — — {get_fullname(item['from_id'], response)} /—/ *документ/гифка*")
-            continue
-        if item.get('attachments') and item['attachments'][0]['type'] == 'video':
-            print(
-                f"{get_date(item['date'])} — — {get_fullname(item['from_id'], response)} /—/ *видео*")
-            continue
+        text_msg = item['text']
+        """Текст сообщения"""
 
-        # Если доп файл без подписи
-        if item.get('attachments') and item['text'] == "":
-            print(
-                f"{get_date(item['date'])} — — {get_fullname(item['from_id'], response)} /—/ *Доп контент без подписи*")
+        # Если есть прикреплённые материалы
+        if item.get('attachments'):
+
+            # Если доп файл без подписи
+            if text_msg == "":
+                print(f"{date} — — {username} /—/ *Доп контент без подписи*")
+
+            # Обычный случай
+            else:
+                match item['attachments'][0]['type']:
+                    case 'sticker':
+                        print(f"{date} — — {username} /—/ *стикер*")
+                    case 'audio':
+                        print(f"{date} — — {username} — {text_msg} /—/ *аудио*")
+                    case 'doc':
+                        print(f"{date} — — {username} — {text_msg} /—/ *документ/гифка*")
+                    case 'video':
+                        print(f"{date} — — {username} — {text_msg} /—/ *видео*")
+                    case 'photo':
+                        print(f"{date} — — {username} — {text_msg} /—/ *фото*")
+                    case _:
+                        print(f"{date} — — {username} — {text_msg} /—/ *нераспознанный доп контент*")
             continue
 
         # Если есть реакции
         if item.get('reactions'):
             print(
-                f"{get_date(item['date'])} — — {get_fullname(item['from_id'], response)} — {item['text']} — {item['reactions']}")
+                f"{date} — — {username} — {text_msg} — {item['reactions']}")
             continue
 
         # Обычный случай
-        print(f"{get_date(item['date'])} — — {get_fullname(item['from_id'], response)} — {item['text']}")
+        print(f"{date} — — {username} — {text_msg}")
