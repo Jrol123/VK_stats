@@ -1,10 +1,14 @@
 from math import ceil
 
+import urllib3
+
 import vk_api
 import csv
 from datetime import datetime
 
 from dotenv import dotenv_values
+
+import urllib3
 
 secrets = dotenv_values(".env")
 
@@ -12,6 +16,15 @@ vk = vk_api.VkApi(
     token=secrets['VK_TOKEN'])
 
 id_chat = int(secrets['CHAT_ID'])
+
+def dowload_img(url: str):
+
+    file_name = (url.split("/")[-1]).split("?")[0]
+    # "Twuf8zy_mUM.jpg"
+
+    res = urllib3.request('GET', url)
+    with open(f'images/{file_name}', 'wb') as f:
+        f.write(res.data)
 
 
 def get_chat(peer_id: int = id_chat + 2e9, count: int = 200, offset: int = 0) -> dict:
@@ -55,6 +68,7 @@ chat_userList = get_names()
 
 user_list = {657900781: "DEAD1",
              303277718: "DEAD2",
+             # 226582250: "Артемий Поповкин",
              666136998: "Ilya Ghost",
              352169415: "Денис Севостьянов",
              267228976: "Александр Пушкарёв",
@@ -131,9 +145,7 @@ for user in chat_userList['users']:
 response = get_chat(count=1)
 length_chat = response['count']
 
-print(int(ceil(length_chat / 200)))
-
-for times_add in range(877, int(ceil(length_chat / 200))):
+for times_add in range(824, int(ceil(length_chat / 200))):
     print(times_add)
     delta = 200 * times_add
     response = get_chat(count=min(200, length_chat - delta), offset=delta)
@@ -149,9 +161,14 @@ for times_add in range(877, int(ceil(length_chat / 200))):
             print(
                 f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} /—/ *документ/гифка*")
             continue
+        if item.get('attachments') and item['attachments'][0]['type'] == 'video':
+            print(
+                f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} /—/ *видео*")
+            continue
         if item.get('attachments') and item['attachments'][0]['type'] == 'photo' and item['text'] == "":
             print(
                 f"{datetime.utcfromtimestamp(item['date']).strftime('%Y-%m-%d %H:%M:%S')} — — {user_list[item['from_id']]} /—/ *фото без подписи*")
+            dowload_img(item['attachments'][0]['photo']['sizes'][-1]['url'])
             continue
         if item.get('reactions'):
             print('РЕАКЦИЯ!')
