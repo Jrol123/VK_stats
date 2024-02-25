@@ -1,3 +1,4 @@
 DateTime~=5.3
 python-dotenv~=1.0.0
 vk_api~=11.9.9
+urllib3~=2.0.3
