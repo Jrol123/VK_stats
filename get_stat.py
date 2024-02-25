@@ -131,8 +131,7 @@ def get_date(utc_date: int) -> str:
     return datetime.utcfromtimestamp(utc_date).strftime('%Y-%m-%d %H:%M:%S')
 
 
-response = get_chat(count=1)
-length_chat = response['count']
+length_chat = get_chat(count=1)['count']
 
 for times_add in range(int(ceil(length_chat / 200))):
     delta = 200 * times_add
