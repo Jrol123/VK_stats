@@ -133,62 +133,82 @@ def get_date(utc_date: int) -> str:
 
 length_chat = get_chat(count=1)['count']
 
+print("date — — isAction — username — responseTo — text — attachmentType — attachmentValue — reactions")
 for times_add in range(int(ceil(length_chat / 200))):
     delta = 200 * times_add
     """Отступ от первого сообщения"""
     response = get_chat(count=min(200, length_chat - delta), offset=delta)
     """count сообщений после delta"""
-    for item in response['items']:
-        # Проверка на действие
-        if item.get('action'):
-            continue
+    for item_data in response['items']:
 
-        date = get_date(item['date'])
-        """Дата публикации сообщения"""
-        username = get_fullname(item['from_id'], response)
-        """ИФ пользователя"""
+        attachmentType = [None, None]
+        if item_data.get('attachments'):
+            attachmentType[0] = item_data['attachments'][0]['type']
+            match attachmentType[0]:
+                case 'sticker':
+                    attachmentType[1] = item_data['attachments'][0]['sticker']['sticker_id']
+                case 'photo':
+                    attachmentType[1] = item_data['attachments'][0]['photo']['sizes'][-1]['url']
+                # case 'audio':
+                #     attachmentType[1] = None
+                # case 'doc':
+                #     attachmentType[1] = None
+                # case 'video':
+                #     attachmentType[1] = None
+                case _:
+                    attachmentType[1] = None
+
+        item = {'date': get_date(item_data['date']),
+                'isAction': item_data.get('action'),
+                'username': get_fullname(item_data['from_id'], response),
+                'responseTo': 0,
+                # TODO: Дописать определение того, кому отвечает человек. В противном случае ставить None
+                'text': item_data['text'],
+                'attachmentType': attachmentType[0],
+                'attachmentValue': attachmentType[1],
+                'reactions': item_data['reactions']
+                # TODO: Улучшить систему реакций. Лучше всего будет хранить как массив, поскольку реакций может быть много.
+                }
+        # TODO: Протестировать новую систему item
 
         # Загрузка доп данных
         if SHOULD_DOWNLOAD and item.get('attachments'):
-            type_item = item['attachments'][0]['type']
+            type_item = item['attachmentType']
             if type_item == 'photo':
                 download_image(item['attachments'][0]['photo']['sizes'][-1]['url'])
             elif type_item == 'sticker':
                 download_sticker(item['attachments'][0]['sticker']['sticker_id'])
                 continue
 
-        text_msg = item['text']
-        """Текст сообщения"""
-
-        # Если есть прикреплённые материалы
-        if item.get('attachments'):
-
-            # Если доп файл без подписи
-            if text_msg == "":
-                print(f"{date} — — {username} /—/ *Доп контент без подписи*")
-
-            # Обычный случай
-            else:
-                match item['attachments'][0]['type']:
-                    case 'sticker':
-                        print(f"{date} — — {username} /—/ *стикер*")
-                    case 'audio':
-                        print(f"{date} — — {username} — {text_msg} /—/ *аудио*")
-                    case 'doc':
-                        print(f"{date} — — {username} — {text_msg} /—/ *документ/гифка*")
-                    case 'video':
-                        print(f"{date} — — {username} — {text_msg} /—/ *видео*")
-                    case 'photo':
-                        print(f"{date} — — {username} — {text_msg} /—/ *фото*")
-                    case _:
-                        print(f"{date} — — {username} — {text_msg} /—/ *нераспознанный доп контент*")
-            continue
-
-        # Если есть реакции
-        if item.get('reactions'):
-            print(
-                f"{date} — — {username} — {text_msg} — {item['reactions']}")
-            continue
-
-        # Обычный случай
-        print(f"{date} — — {username} — {text_msg}")
+        # # Если есть прикреплённые материалы
+        # if item.get('attachments'):
+        #
+        #     # Если доп файл без подписи
+        #     if text_msg == "":
+        #         print(f"{date} — — {username} /—/ *Доп контент без подписи*")
+        #
+        #     # Обычный случай
+        #     else:
+        #         match item['attachments'][0]['type']:
+        #             case 'sticker':
+        #                 print(f"{date} — — {username} /—/ *стикер*")
+        #             case 'audio':
+        #                 print(f"{date} — — {username} — {text_msg} /—/ *аудио*")
+        #             case 'doc':
+        #                 print(f"{date} — — {username} — {text_msg} /—/ *документ/гифка*")
+        #             case 'video':
+        #                 print(f"{date} — — {username} — {text_msg} /—/ *видео*")
+        #             case 'photo':
+        #                 print(f"{date} — — {username} — {text_msg} /—/ *фото*")
+        #             case _:
+        #                 print(f"{date} — — {username} — {text_msg} /—/ *нераспознанный доп контент*")
+        #     continue
+        #
+        # # Если есть реакции
+        # if item.get('reactions'):
+        #     print(
+        #         f"{date} — — {username} — {text_msg} — {item['reactions']}")
+        #     continue
+        #
+        # # Обычный случай
+        # print(f"{date} — — {username} — {text_msg}")
