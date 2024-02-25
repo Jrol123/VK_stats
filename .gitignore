@@ -1,16 +1,13 @@
-# Files
+### Custom ###
+
+## Files ##
 
 .env
 
-#Folders
+## Folders ##
 
 /sergey_code/
 /content/
-
-#ETC
-
-# Created by https://www.toptal.com/developers/gitignore/api/jetbrains+all,jupyternotebooks
-# Edit at https://www.toptal.com/developers/gitignore?templates=jetbrains+all,jupyternotebooks
 
 ### JetBrains+all ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
