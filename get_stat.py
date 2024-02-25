@@ -168,6 +168,7 @@ for times_add in range(int(ceil(length_chat / 200))):
                 'attachmentValue': attachmentType[1],
                 'reactions': item_data['reactions']
                 # TODO: Улучшить систему реакций. Лучше всего будет хранить как массив, поскольку реакций может быть много.
+                # TODO: Загрузить картинки реакций. Сделать это один раз.
                 }
         # TODO: Протестировать новую систему item
 
