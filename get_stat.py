@@ -59,9 +59,10 @@ def download_sticker(id_sticker: int) -> None:
     :rtype: None
 
     """
-    res = urllib3.request('GET', f"https://vk.com/sticker/1-{id_sticker}-512b")
+    result_sticker = urllib3.request('GET', f"https://vk.com/sticker/1-{id_sticker}-512b")
+    """Полученный стикер"""
     with open(f'content/visual/stickers/{id_sticker}.png', 'wb') as f:
-        f.write(res.data)
+        f.write(result_sticker.data)
 
 
 def get_chat(peer_id: int = id_chat, count: int = 200, offset: int = 0) -> dict:
