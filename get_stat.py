@@ -22,7 +22,6 @@ id_chat = int(secrets['CHAT_ID'])
 SHOULD_DOWNLOAD = False
 """Должна ли проводиться загрузка фото/стикеров"""
 
-
 def download_image(url: str) -> None:
     """
 
@@ -111,9 +110,10 @@ def get_fullname(user_id: int, full_response: dict) -> str:
     """
     for profile in full_response['profiles']:
         if profile['id'] == user_id:
+            # Если аккаунт пользователя удалён
+            if profile['first_name'] == 'DELETED':
+                return 'EMPTY_USER' + ' ' + str(user_id)
             return profile['first_name'] + ' ' + profile['last_name']
-    # Если аккаунт пользователя удалён
-    return 'EMPTY_USER' + ' ' + str(user_id)
 
 
 def get_date(utc_date: int) -> str:
@@ -132,84 +132,82 @@ def get_date(utc_date: int) -> str:
 
 
 length_chat = get_chat(count=1)['count']
+"""Количество сообщений в чате"""
+print(int(ceil(length_chat / 200)))
 
-print("date — — isAction — username — responseTo — text — attachmentType — attachmentValue — reactions")
+msg_mass = []
+"""Массив сообщений"""
+
+print("date — isAction — username — responseTo — text — attachment — reactions")
+start_time = datetime.now()
+"""Время начала получения статистики"""
 for times_add in range(int(ceil(length_chat / 200))):
+    print(times_add)
     delta = 200 * times_add
     """Отступ от первого сообщения"""
-    response = get_chat(count=min(200, length_chat - delta), offset=delta)
+    messages = get_chat(count=min(200, length_chat - delta), offset=delta)
     """count сообщений после delta"""
-    for item_data in response['items']:
-
-        attachmentType = [None, None]
+    for item_data in messages['items']:
+        attachment = {'type': None,
+                      'value': None
+                      # Содержит в себе название файла
+                      }
         if item_data.get('attachments'):
-            attachmentType[0] = item_data['attachments'][0]['type']
-            match attachmentType[0]:
+            attachment['type'] = item_data['attachments'][0]['type']
+            match attachment['type']:
                 case 'sticker':
-                    attachmentType[1] = item_data['attachments'][0]['sticker']['sticker_id']
+                    attachment['value'] = str(item_data['attachments'][0]['sticker']['sticker_id']) + ".png"
                 case 'photo':
-                    attachmentType[1] = item_data['attachments'][0]['photo']['sizes'][-1]['url']
-                # case 'audio':
-                #     attachmentType[1] = None
-                # case 'doc':
-                #     attachmentType[1] = None
-                # case 'video':
-                #     attachmentType[1] = None
+                    attachment['value'] = ((item_data['attachments'][0]['photo']['sizes'][-1]['url']).split("/")[-1]).split("?")[0]
                 case _:
-                    attachmentType[1] = None
+                    attachment['value'] = None
+
+        reactions = {}
+        """Реакции"""
+        if item_data.get('reactions'):
+            for reaction in item_data['reactions']:
+                user_list = []
+                for user in reaction['user_ids']:
+                    user_list.append(get_fullname(user, messages))
+                reactions[reaction['reaction_id']] = user_list
+
+        response = {'id_msg': None,
+                    'username': None,
+                    'type': None,
+                    'text': None,
+                    'value': None
+                    # Содержит в себе название файла
+                    }
+        """Ответ на сообщение"""
+        if item_data.get('reply_message'):
+            pass
+            # TODO: Написать систему сохранения relpy-ев
 
         item = {'date': get_date(item_data['date']),
                 'isAction': item_data.get('action'),
-                'username': get_fullname(item_data['from_id'], response),
-                'responseTo': 0,
-                # TODO: Дописать определение того, кому отвечает человек. В противном случае ставить None
+                'username': get_fullname(item_data['from_id'], messages),
                 'text': item_data['text'],
-                'attachmentType': attachmentType[0],
-                'attachmentValue': attachmentType[1],
-                'reactions': item_data['reactions']
-                # TODO: Улучшить систему реакций. Лучше всего будет хранить как массив, поскольку реакций может быть много.
-                # TODO: Загрузить картинки реакций. Сделать это один раз.
+                'attachment': attachment,
+                'reactions': reactions,
+                'response': response
                 }
-        # TODO: Протестировать новую систему item
+        """Сообщение"""
+
+        msg_mass.append(item)
 
         # Загрузка доп данных
         if SHOULD_DOWNLOAD and item.get('attachments'):
-            type_item = item['attachmentType']
+            type_item = item['attachment']
             if type_item == 'photo':
-                download_image(item['attachments'][0]['photo']['sizes'][-1]['url'])
+                download_image(item_data['attachments'][0]['photo']['sizes'][-1]['url'])
             elif type_item == 'sticker':
-                download_sticker(item['attachments'][0]['sticker']['sticker_id'])
-                continue
+                download_sticker(item_data['attachments'][0]['sticker']['sticker_id'])
 
-        # # Если есть прикреплённые материалы
-        # if item.get('attachments'):
-        #
-        #     # Если доп файл без подписи
-        #     if text_msg == "":
-        #         print(f"{date} — — {username} /—/ *Доп контент без подписи*")
-        #
-        #     # Обычный случай
-        #     else:
-        #         match item['attachments'][0]['type']:
-        #             case 'sticker':
-        #                 print(f"{date} — — {username} /—/ *стикер*")
-        #             case 'audio':
-        #                 print(f"{date} — — {username} — {text_msg} /—/ *аудио*")
-        #             case 'doc':
-        #                 print(f"{date} — — {username} — {text_msg} /—/ *документ/гифка*")
-        #             case 'video':
-        #                 print(f"{date} — — {username} — {text_msg} /—/ *видео*")
-        #             case 'photo':
-        #                 print(f"{date} — — {username} — {text_msg} /—/ *фото*")
-        #             case _:
-        #                 print(f"{date} — — {username} — {text_msg} /—/ *нераспознанный доп контент*")
-        #     continue
-        #
-        # # Если есть реакции
-        # if item.get('reactions'):
-        #     print(
-        #         f"{date} — — {username} — {text_msg} — {item['reactions']}")
-        #     continue
-        #
-        # # Обычный случай
-        # print(f"{date} — — {username} — {text_msg}")
+end_time = datetime.now()
+"""Время завершения программы получения статистики"""
+print()
+print(end_time - start_time)
+print()
+
+for msg in msg_mass:
+    print(msg)
