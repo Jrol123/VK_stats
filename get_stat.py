@@ -170,6 +170,8 @@ for times_add in range(int(ceil(length_chat / 200))):
                         ((item_data['attachments'][0]['photo']['sizes'][-1]['url']).split("/")[-1]).split("?"))[0]
                 case _:
                     attachments['value'] = None
+        else:
+            attachments = {}
 
         reactions = {}
         """Реакции"""
@@ -215,6 +217,8 @@ for times_add in range(int(ceil(length_chat / 200))):
                         response['value'] = str(reply['attachments'][0]['sticker']['sticker_id']) + ".png"
                     case _:
                         response['value'] = None
+        else:
+            response = {}
 
         item = {'id': item_data['id'],
                 'date': get_date(item_data['date']),
