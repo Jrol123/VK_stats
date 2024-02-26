@@ -22,6 +22,7 @@ id_chat = int(secrets['CHAT_ID'])
 SHOULD_DOWNLOAD = False
 """Должна ли проводиться загрузка фото/стикеров"""
 
+
 def download_image(url: str) -> None:
     """
 
@@ -138,29 +139,37 @@ print(int(ceil(length_chat / 200)))
 msg_mass = []
 """Массив сообщений"""
 
-print("date — isAction — username — responseTo — text — attachment — reactions")
+count_dead_msg = 0
+"""Количество удалённых сообщений, на которые был дан ответ"""
+
+print("id — date — isAction — username — text — attachments — reactions — response")
+
 start_time = datetime.now()
 """Время начала получения статистики"""
 for times_add in range(int(ceil(length_chat / 200))):
+
     print(times_add)
     delta = 200 * times_add
     """Отступ от первого сообщения"""
     messages = get_chat(count=min(200, length_chat - delta), offset=delta)
     """count сообщений после delta"""
+
     for item_data in messages['items']:
-        attachment = {'type': None,
-                      'value': None
-                      # Содержит в себе название файла
-                      }
+        attachments = {'type': None,
+                       'value': None
+                       # Содержит в себе название файла
+                       }
+        """Прикреплённые доп. материалы"""
         if item_data.get('attachments'):
-            attachment['type'] = item_data['attachments'][0]['type']
-            match attachment['type']:
+            attachments['type'] = item_data['attachments'][0]['type']
+            match attachments['type']:
                 case 'sticker':
-                    attachment['value'] = str(item_data['attachments'][0]['sticker']['sticker_id']) + ".png"
+                    attachments['value'] = str(item_data['attachments'][0]['sticker']['sticker_id']) + ".png"
                 case 'photo':
-                    attachment['value'] = ((item_data['attachments'][0]['photo']['sizes'][-1]['url']).split("/")[-1]).split("?")[0]
+                    attachments['value'] = (
+                        ((item_data['attachments'][0]['photo']['sizes'][-1]['url']).split("/")[-1]).split("?"))[0]
                 case _:
-                    attachment['value'] = None
+                    attachments['value'] = None
 
         reactions = {}
         """Реакции"""
@@ -171,23 +180,48 @@ for times_add in range(int(ceil(length_chat / 200))):
                     user_list.append(get_fullname(user, messages))
                 reactions[reaction['reaction_id']] = user_list
 
-        response = {'id_msg': None,
+        response = {'id': None,
+                    'date': None,
                     'username': None,
-                    'type': None,
                     'text': None,
+                    'type': None,
                     'value': None
                     # Содержит в себе название файла
                     }
         """Ответ на сообщение"""
         if item_data.get('reply_message'):
-            pass
-            # TODO: Написать систему сохранения relpy-ев
+            reply = item_data['reply_message']
+            if reply.get('conversation_message_id'):
+                response['id'] = reply['conversation_message_id']
+            if not reply.get('conversation_message_id') or response['id'] == 0:
+                response['id'] = f'f{count_dead_msg}'
+                count_dead_msg += 1
+            response['date'] = get_date(reply['date'])
+            response['username'] = get_fullname(reply['from_id'], messages)
+            response['text'] = reply['text']
+            # В большинстве случаев присылается лишь одно прикрепление. А если даже и несколько, то они одного типа.
+            # Я не знаю, как обрабатывать сразу несколько прикреплений, тем более, что я использую только фото и стикеры
+            if len(reply['attachments']) != 0:
+                response['type'] = reply['attachments'][0]['type']
+                match response['type']:
+                    case 'photo':
+                        response['value'] = []
+                        for photo in reply['attachments']:
+                            if photo['type'] != 'photo':
+                                continue
+                            response['value'].append(
+                                ((photo['photo']['sizes'][-1]['url']).split("/")[-1]).split("?")[0])
+                    case 'sticker':
+                        response['value'] = str(reply['attachments'][0]['sticker']['sticker_id']) + ".png"
+                    case _:
+                        response['value'] = None
 
-        item = {'date': get_date(item_data['date']),
+        item = {'id': item_data['id'],
+                'date': get_date(item_data['date']),
                 'isAction': item_data.get('action'),
                 'username': get_fullname(item_data['from_id'], messages),
                 'text': item_data['text'],
-                'attachment': attachment,
+                'attachments': attachments,
                 'reactions': reactions,
                 'response': response
                 }
@@ -196,10 +230,14 @@ for times_add in range(int(ceil(length_chat / 200))):
         msg_mass.append(item)
 
         # Загрузка доп данных
-        if SHOULD_DOWNLOAD and item.get('attachments'):
-            type_item = item['attachment']
+        if SHOULD_DOWNLOAD and item_data.get('attachments'):
+            type_item = item_data['attachments'][0]['type']
+            """Если первый отправленный файл — изображение"""
             if type_item == 'photo':
-                download_image(item_data['attachments'][0]['photo']['sizes'][-1]['url'])
+                for photo in item_data['attachments']:
+                    if photo['type'] != 'photo':
+                        continue
+                    download_image(photo['photo']['sizes'][-1]['url'])
             elif type_item == 'sticker':
                 download_sticker(item_data['attachments'][0]['sticker']['sticker_id'])
 
