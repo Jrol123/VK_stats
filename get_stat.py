@@ -176,8 +176,9 @@ for times_add in range(int(ceil(length_chat / 200))):
         reactions = {}
         """Реакции"""
         if item_data.get('reactions'):
+            # Почему-то не всегда показывает тех, кто ставил реакции
             for reaction in item_data['reactions']:
-                user_list = []
+                user_list = [reaction['count']]
                 for user in reaction['user_ids']:
                     user_list.append(get_fullname(user, messages))
                 reactions[reaction['reaction_id']] = user_list
