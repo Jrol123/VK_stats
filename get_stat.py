@@ -111,9 +111,10 @@ def get_fullname(user_id: int, full_response: dict) -> str:
     """
     for profile in full_response['profiles']:
         if profile['id'] == user_id:
+            # Если аккаунт пользователя удалён
+            if profile['first_name'] == 'DELETED':
+                return 'EMPTY_USER' + ' ' + str(user_id)
             return profile['first_name'] + ' ' + profile['last_name']
-    # Если аккаунт пользователя удалён
-    return 'EMPTY_USER' + ' ' + str(user_id)
 
 
 def get_date(utc_date: int) -> str:
@@ -132,63 +133,124 @@ def get_date(utc_date: int) -> str:
 
 
 length_chat = get_chat(count=1)['count']
+"""Количество сообщений в чате"""
+print(int(ceil(length_chat / 200)))
 
+msg_mass = []
+"""Массив сообщений"""
+
+count_dead_msg = 0
+"""Количество удалённых сообщений, на которые был дан ответ"""
+
+print("id — date — isAction — username — text — attachments — reactions — response")
+
+start_time = datetime.now()
+"""Время начала получения статистики"""
 for times_add in range(int(ceil(length_chat / 200))):
+
+    print(times_add)
     delta = 200 * times_add
     """Отступ от первого сообщения"""
-    response = get_chat(count=min(200, length_chat - delta), offset=delta)
+    messages = get_chat(count=min(200, length_chat - delta), offset=delta)
     """count сообщений после delta"""
-    for item in response['items']:
-        # Проверка на действие
-        if item.get('action'):
-            continue
 
-        date = get_date(item['date'])
-        """Дата публикации сообщения"""
-        username = get_fullname(item['from_id'], response)
-        """ИФ пользователя"""
+    for item_data in messages['items']:
+        attachments = {'type': None,
+                       'value': None
+                       # Содержит в себе название файла
+                       }
+        """Прикреплённые доп. материалы"""
+        if item_data.get('attachments'):
+            attachments['type'] = item_data['attachments'][0]['type']
+            match attachments['type']:
+                case 'sticker':
+                    attachments['value'] = str(item_data['attachments'][0]['sticker']['sticker_id']) + ".png"
+                case 'photo':
+                    attachments['value'] = (
+                        ((item_data['attachments'][0]['photo']['sizes'][-1]['url']).split("/")[-1]).split("?"))[0]
+                case _:
+                    attachments['value'] = None
+        else:
+            attachments = {}
+
+        reactions = {}
+        """Реакции"""
+        if item_data.get('reactions'):
+            # Почему-то не всегда показывает тех, кто ставил реакции
+            for reaction in item_data['reactions']:
+                user_list = [reaction['count']]
+                for user in reaction['user_ids']:
+                    user_list.append(get_fullname(user, messages))
+                reactions[reaction['reaction_id']] = user_list
+
+        response = {'id': None,
+                    'date': None,
+                    'username': None,
+                    'text': None,
+                    'type': None,
+                    'value': None
+                    # Содержит в себе название файла
+                    }
+        """Ответ на сообщение"""
+        if item_data.get('reply_message'):
+            reply = item_data['reply_message']
+            if reply.get('conversation_message_id'):
+                response['id'] = reply['conversation_message_id']
+            if not reply.get('conversation_message_id') or response['id'] == 0:
+                response['id'] = f'f{count_dead_msg}'
+                count_dead_msg += 1
+            response['date'] = get_date(reply['date'])
+            response['username'] = get_fullname(reply['from_id'], messages)
+            response['text'] = reply['text']
+            # В большинстве случаев присылается лишь одно прикрепление. А если даже и несколько, то они одного типа.
+            # Я не знаю, как обрабатывать сразу несколько прикреплений, тем более, что я использую только фото и стикеры
+            if len(reply['attachments']) != 0:
+                response['type'] = reply['attachments'][0]['type']
+                match response['type']:
+                    case 'photo':
+                        response['value'] = []
+                        for photo in reply['attachments']:
+                            if photo['type'] != 'photo':
+                                continue
+                            response['value'].append(
+                                ((photo['photo']['sizes'][-1]['url']).split("/")[-1]).split("?")[0])
+                    case 'sticker':
+                        response['value'] = str(reply['attachments'][0]['sticker']['sticker_id']) + ".png"
+                    case _:
+                        response['value'] = None
+        else:
+            response = {}
+
+        item = {'id': item_data['id'],
+                'date': get_date(item_data['date']),
+                'isAction': item_data.get('action'),
+                'username': get_fullname(item_data['from_id'], messages),
+                'text': item_data['text'],
+                'attachments': attachments,
+                'reactions': reactions,
+                'response': response
+                }
+        """Сообщение"""
+
+        msg_mass.append(item)
 
         # Загрузка доп данных
-        if SHOULD_DOWNLOAD and item.get('attachments'):
-            type_item = item['attachments'][0]['type']
+        if SHOULD_DOWNLOAD and item_data.get('attachments'):
+            type_item = item_data['attachments'][0]['type']
+            """Если первый отправленный файл — изображение"""
             if type_item == 'photo':
-                download_image(item['attachments'][0]['photo']['sizes'][-1]['url'])
+                for photo in item_data['attachments']:
+                    if photo['type'] != 'photo':
+                        continue
+                    download_image(photo['photo']['sizes'][-1]['url'])
             elif type_item == 'sticker':
-                download_sticker(item['attachments'][0]['sticker']['sticker_id'])
-                continue
+                download_sticker(item_data['attachments'][0]['sticker']['sticker_id'])
 
-        text_msg = item['text']
-        """Текст сообщения"""
+end_time = datetime.now()
+"""Время завершения программы получения статистики"""
+print()
+print(end_time - start_time)
+print()
 
-        # Если есть прикреплённые материалы
-        if item.get('attachments'):
-
-            # Если доп файл без подписи
-            if text_msg == "":
-                print(f"{date} — — {username} /—/ *Доп контент без подписи*")
-
-            # Обычный случай
-            else:
-                match item['attachments'][0]['type']:
-                    case 'sticker':
-                        print(f"{date} — — {username} /—/ *стикер*")
-                    case 'audio':
-                        print(f"{date} — — {username} — {text_msg} /—/ *аудио*")
-                    case 'doc':
-                        print(f"{date} — — {username} — {text_msg} /—/ *документ/гифка*")
-                    case 'video':
-                        print(f"{date} — — {username} — {text_msg} /—/ *видео*")
-                    case 'photo':
-                        print(f"{date} — — {username} — {text_msg} /—/ *фото*")
-                    case _:
-                        print(f"{date} — — {username} — {text_msg} /—/ *нераспознанный доп контент*")
-            continue
-
-        # Если есть реакции
-        if item.get('reactions'):
-            print(
-                f"{date} — — {username} — {text_msg} — {item['reactions']}")
-            continue
-
-        # Обычный случай
-        print(f"{date} — — {username} — {text_msg}")
+for msg in msg_mass:
+    print(msg)
