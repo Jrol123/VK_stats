@@ -143,6 +143,7 @@ count_dead_msg = 0
 """Количество удалённых сообщений, на которые был дан ответ"""
 
 print("id — date — isAction — username — text — attachments — reactions — response")
+# TODO: Сохранять id пользователя
 
 start_time = datetime.now()
 """Время начала получения статистики"""
@@ -156,20 +157,23 @@ for times_add in range(int(ceil(length_chat / 200))):
 
     for item_data in messages['items']:
         attachments = {'type': None,
-                       'value': None
+                       'value': []
                        # Содержит в себе название файла
                        }
         """Прикреплённые доп. материалы"""
         if item_data.get('attachments'):
-            attachments['type'] = item_data['attachments'][0]['type']
-            match attachments['type']:
-                case 'sticker':
-                    attachments['value'] = str(item_data['attachments'][0]['sticker']['sticker_id']) + ".png"
-                case 'photo':
-                    attachments['value'] = (
-                        ((item_data['attachments'][0]['photo']['sizes'][-1]['url']).split("/")[-1]).split("?"))[0]
-                case _:
-                    attachments['value'] = None
+
+            for attachment in item_data['attachments']:
+                if attachment['type'] == 'photo':
+                    attachments['type'] = 'photo'
+                    attachments['value'].append(
+                        (((attachment['photo']['sizes'][-1]['url']).split("/")[-1]).split("?"))[0]
+                    )
+                elif attachment['type'] == 'sticker':
+                    attachments['type'] = 'sticker'
+                    attachments['value'].append(str(attachment['sticker']['sticker_id']) + ".png")
+            if attachments['type'] is None:
+                attachments = {}
         else:
             attachments = {}
 
@@ -188,11 +192,13 @@ for times_add in range(int(ceil(length_chat / 200))):
                     'date': None,
                     'username': None,
                     'text': None,
-                    'type': None,
-                    'value': None
-                    # Содержит в себе название файла
+                    'attachments': {'type': None,
+                                    'value': []
+                                    # Содержит в себе название файла
+                                    }
                     }
         """Ответ на сообщение"""
+        # TODO: Сохранять id пользователя
         if item_data.get('reply_message'):
             reply = item_data['reply_message']
             if reply.get('conversation_message_id'):
@@ -203,25 +209,18 @@ for times_add in range(int(ceil(length_chat / 200))):
             response['date'] = get_date(reply['date'])
             response['username'] = get_fullname(reply['from_id'], messages)
             response['text'] = reply['text']
-            # В большинстве случаев присылается лишь одно прикрепление. А если даже и несколько, то они одного типа.
-            # Я не знаю, как обрабатывать сразу несколько прикреплений, тем более, что я использую только фото и стикеры
-            if len(reply['attachments']) != 0:
-                response['type'] = reply['attachments'][0]['type']
-                # TODO: переделать систему с прикреплёнными файлами.
-                # Можно просто для каждого прикреплённого файла делать проверку на тип.
-                # Даже если это будет стикер — всё равно.Стикер автоматом отсечёт всё ненужное
-                match response['type']:
-                    case 'photo':
-                        response['value'] = []
-                        for photo in reply['attachments']:
-                            if photo['type'] != 'photo':
-                                continue
-                            response['value'].append(
-                                ((photo['photo']['sizes'][-1]['url']).split("/")[-1]).split("?")[0])
-                    case 'sticker':
-                        response['value'] = str(reply['attachments'][0]['sticker']['sticker_id']) + ".png"
-                    case _:
-                        response['value'] = None
+
+            for attachment in reply['attachments']:
+                if attachment['type'] == 'photo':
+                    response['attachments']['type'] = 'photo'
+                    response['attachments']['value'].append(
+                        (((attachment['photo']['sizes'][-1]['url']).split("/")[-1]).split("?"))[0]
+                    )
+                elif attachment['type'] == 'sticker':
+                    response['attachments']['type'] = 'sticker'
+                    response['attachments']['value'].append(str(attachment['sticker']['sticker_id']) + ".png")
+            if response['attachments']['type'] is None:
+                response['attachments'] = {}
         else:
             response = {}
 
@@ -240,24 +239,20 @@ for times_add in range(int(ceil(length_chat / 200))):
 
         # Загрузка доп данных
         if SHOULD_DOWNLOAD and item_data.get('attachments'):
-            # TODO: переделать систему с прикреплёнными файлами.
-            # Можно просто для каждого прикреплённого файла делать проверку на тип.
-            # Даже если это будет стикер — всё равно.Стикер автоматом отсечёт всё ненужное
-            type_item = item_data['attachments'][0]['type']
-            """Если первый отправленный файл — изображение"""
-            if type_item == 'photo':
-                for photo in item_data['attachments']:
-                    if photo['type'] != 'photo':
-                        continue
-                    download_image(photo['photo']['sizes'][-1]['url'])
-            elif type_item == 'sticker':
-                download_sticker(item_data['attachments'][0]['sticker']['sticker_id'])
+            for attachment in item_data['attachments']:
+                if attachment['type'] == 'photo':
+                    download_image(attachment['photo']['sizes'][-1]['url'])
+                elif attachment['type'] == 'sticker':
+                    download_sticker(attachment['sticker']['sticker_id'])
 
 end_time = datetime.now()
 """Время завершения программы получения статистики"""
 print()
 print(end_time - start_time)
 print()
+
+for i in range(500):
+    print(msg_mass[i])
 
 # for msg in msg_mass:
 #     print(msg)
