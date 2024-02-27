@@ -207,6 +207,9 @@ for times_add in range(int(ceil(length_chat / 200))):
             # Я не знаю, как обрабатывать сразу несколько прикреплений, тем более, что я использую только фото и стикеры
             if len(reply['attachments']) != 0:
                 response['type'] = reply['attachments'][0]['type']
+                # TODO: переделать систему с прикреплёнными файлами.
+                # Можно просто для каждого прикреплённого файла делать проверку на тип.
+                # Даже если это будет стикер — всё равно.Стикер автоматом отсечёт всё ненужное
                 match response['type']:
                     case 'photo':
                         response['value'] = []
@@ -237,6 +240,9 @@ for times_add in range(int(ceil(length_chat / 200))):
 
         # Загрузка доп данных
         if SHOULD_DOWNLOAD and item_data.get('attachments'):
+            # TODO: переделать систему с прикреплёнными файлами.
+            # Можно просто для каждого прикреплённого файла делать проверку на тип.
+            # Даже если это будет стикер — всё равно.Стикер автоматом отсечёт всё ненужное
             type_item = item_data['attachments'][0]['type']
             """Если первый отправленный файл — изображение"""
             if type_item == 'photo':
@@ -253,5 +259,5 @@ print()
 print(end_time - start_time)
 print()
 
-for msg in msg_mass:
-    print(msg)
+# for msg in msg_mass:
+#     print(msg)
