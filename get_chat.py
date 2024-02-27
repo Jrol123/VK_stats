@@ -143,7 +143,6 @@ count_dead_msg = 0
 """Количество удалённых сообщений, на которые был дан ответ"""
 
 print("id — date — isAction — username — text — attachments — reactions — response")
-# TODO: Сохранять id пользователя
 
 start_time = datetime.now()
 """Время начала получения статистики"""
@@ -190,7 +189,9 @@ for times_add in range(int(ceil(length_chat / 200))):
 
         response = {'id': None,
                     'date': None,
-                    'username': None,
+                    'user': {'id': None,
+                             'username': None,
+                             },
                     'text': None,
                     'attachments': {'type': None,
                                     'value': []
@@ -198,7 +199,6 @@ for times_add in range(int(ceil(length_chat / 200))):
                                     }
                     }
         """Ответ на сообщение"""
-        # TODO: Сохранять id пользователя
         if item_data.get('reply_message'):
             reply = item_data['reply_message']
             if reply.get('conversation_message_id'):
@@ -207,7 +207,8 @@ for times_add in range(int(ceil(length_chat / 200))):
                 response['id'] = f'f{count_dead_msg}'
                 count_dead_msg += 1
             response['date'] = get_date(reply['date'])
-            response['username'] = get_fullname(reply['from_id'], messages)
+            response['user']['id'] = reply['from_id']
+            response['user']['username'] = get_fullname(reply['from_id'], messages)
             response['text'] = reply['text']
 
             for attachment in reply['attachments']:
@@ -227,7 +228,9 @@ for times_add in range(int(ceil(length_chat / 200))):
         item = {'id': item_data['id'],
                 'date': get_date(item_data['date']),
                 'isAction': item_data.get('action'),
-                'username': get_fullname(item_data['from_id'], messages),
+                'user': {'id': item_data['from_id'],
+                         'username': get_fullname(item_data['from_id'], messages)
+                         },
                 'text': item_data['text'],
                 'attachments': attachments,
                 'reactions': reactions,
