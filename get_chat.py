@@ -4,10 +4,12 @@
 
 import vk_api
 import urllib3
+import pandas as pd
 from math import ceil
 from datetime import datetime
 
 from dotenv import dotenv_values
+
 
 secrets = dotenv_values(".env")
 """Секреты"""
@@ -134,7 +136,7 @@ def get_date(utc_date: int) -> str:
 
 length_chat = get_chat(count=1)['count']
 """Количество сообщений в чате"""
-print(int(ceil(length_chat / 200)))
+# print(int(ceil(length_chat / 200)))
 
 msg_mass = []
 """Массив сообщений"""
@@ -146,7 +148,7 @@ print("id — date — isAction — username — text — attachments — reacti
 
 start_time = datetime.now()
 """Время начала получения статистики"""
-for times_add in range(int(ceil(length_chat / 200))):
+for times_add in range(870, int(ceil(length_chat / 200))):
 
     print(times_add)
     delta = 200 * times_add
@@ -250,12 +252,6 @@ for times_add in range(int(ceil(length_chat / 200))):
 
 end_time = datetime.now()
 """Время завершения программы получения статистики"""
-print()
 print(end_time - start_time)
-print()
 
-for i in range(500):
-    print(msg_mass[i])
-
-# for msg in msg_mass:
-#     print(msg)
+df = pd.DataFrame(msg_mass)
