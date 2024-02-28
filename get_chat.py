@@ -254,4 +254,6 @@ end_time = datetime.now()
 """Время завершения программы получения статистики"""
 print(end_time - start_time)
 
+# https://stackoverflow.com/questions/13575090/construct-pandas-dataframe-from-items-in-nested-dictionary
+
 df = pd.DataFrame(msg_mass)
