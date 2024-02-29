@@ -217,10 +217,6 @@ for times_add in range(870, int(ceil(length_chat / 200))):
                 elif attachment['type'] == 'sticker':
                     response['attachments']['type'] = 'sticker'
                     response['attachments']['value'].append(str(attachment['sticker']['sticker_id']) + ".png")
-            if response['attachments']['type'] is None:
-                response['attachments'] = {}
-        else:
-            response = {}
 
         item = {'id': item_data['id'],
                 'date': get_date(item_data['date']),
@@ -231,7 +227,13 @@ for times_add in range(870, int(ceil(length_chat / 200))):
                 'attachments_type': attachments_type,
                 'attachments': attachments,
                 'reactions': reactions,
-                'response': response
+                'response_id': response['id'],
+                'response_date': response['date'],
+                'response_id_user': response['user']['id'],
+                'response_username': response['user']['username'],
+                'response_text': response['text'],
+                'response_attachments_type': response['attachments']['type'],
+                'response_attachments': response['attachments']['value']
                 }
         """Сообщение"""
 
