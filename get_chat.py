@@ -10,7 +10,6 @@ from datetime import datetime
 
 from dotenv import dotenv_values
 
-
 secrets = dotenv_values(".env")
 """Секреты"""
 
@@ -157,33 +156,28 @@ for times_add in range(870, int(ceil(length_chat / 200))):
     """count сообщений после delta"""
 
     for item_data in messages['items']:
-        attachments = {'type': None,
-                       'value': []
-                       # Содержит в себе название файла
-                       }
+        attachments_type = None
+        attachments = []
         """Прикреплённые доп. материалы"""
         if item_data.get('attachments'):
 
             for attachment in item_data['attachments']:
                 if attachment['type'] == 'photo':
-                    attachments['type'] = 'photo'
-                    attachments['value'].append(
+                    attachments_type = 'photo'
+                    attachments.append(
                         (((attachment['photo']['sizes'][-1]['url']).split("/")[-1]).split("?"))[0]
                     )
                 elif attachment['type'] == 'sticker':
-                    attachments['type'] = 'sticker'
-                    attachments['value'].append(str(attachment['sticker']['sticker_id']) + ".png")
-            if attachments['type'] is None:
-                attachments = {}
-        else:
-            attachments = {}
+                    attachments_type = 'sticker'
+                    attachments.append(str(attachment['sticker']['sticker_id']) + ".png")
 
-        reactions = {}
+        reactions = [0] * (16 + 1)
         """Реакции"""
         if item_data.get('reactions'):
             # Почему-то не всегда показывает тех, кто ставил реакции
             # #1
             for reaction in item_data['reactions']:
+                reactions[0] += reaction['count']
                 user_list = [reaction['count']]
                 for user in reaction['user_ids']:
                     user_list.append(get_fullname(user, messages))
@@ -200,6 +194,7 @@ for times_add in range(870, int(ceil(length_chat / 200))):
                                     # Содержит в себе название файла
                                     }
                     }
+        # TODO: Встроить response в item_data
         """Ответ на сообщение"""
         if item_data.get('reply_message'):
             reply = item_data['reply_message']
@@ -230,10 +225,10 @@ for times_add in range(870, int(ceil(length_chat / 200))):
         item = {'id': item_data['id'],
                 'date': get_date(item_data['date']),
                 'isAction': item_data.get('action'),
-                'user': {'id': item_data['from_id'],
-                         'username': get_fullname(item_data['from_id'], messages)
-                         },
+                'id_user': item_data['from_id'],
+                'username': get_fullname(item_data['from_id'], messages),
                 'text': item_data['text'],
+                'attachments_type': attachments_type,
                 'attachments': attachments,
                 'reactions': reactions,
                 'response': response
