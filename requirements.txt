@@ -3,3 +3,4 @@ python-dotenv~=1.0.1
 vk_api~=11.9.9
 urllib3~=2.2
 CairoSVG~=2.7
+pandas~=2.2.1

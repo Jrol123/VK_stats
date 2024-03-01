@@ -4,6 +4,7 @@
 
 import vk_api
 import urllib3
+import pandas as pd
 from math import ceil
 from datetime import datetime
 
@@ -94,27 +95,27 @@ def get_chat(peer_id: int = id_chat, count: int = 200, offset: int = 0) -> dict:
                      )
 
 
-def get_fullname(user_id: int, full_response: dict) -> str:
-    """
-
-    Получение полного имени пользователя
-
-    API ВКонтакте выдаёт набор профилей пользователей, писавших сообщения
-    Производится перебор id профилей и подбор под user_id
-
-    :param user_id: ID пользователя
-    :param full_response: Расширенный набор сообщений
-
-    :return: ФИО в формате: Имя + " " + Фамилия
-    :rtype: str
-
-    """
-    for profile in full_response['profiles']:
-        if profile['id'] == user_id:
-            # Если аккаунт пользователя удалён
-            if profile['first_name'] == 'DELETED':
-                return 'EMPTY_USER' + ' ' + str(user_id)
-            return profile['first_name'] + ' ' + profile['last_name']
+# def get_fullname(user_id: int, full_response: dict) -> str:
+#     """
+#
+#     Получение полного имени пользователя
+#
+#     API ВКонтакте выдаёт набор профилей пользователей, писавших сообщения
+#     Производится перебор id профилей и подбор под user_id
+#
+#     :param user_id: ID пользователя
+#     :param full_response: Расширенный набор сообщений
+#
+#     :return: ФИО в формате: Имя + " " + Фамилия
+#     :rtype: str
+#
+#     """
+#     for profile in full_response['profiles']:
+#         if profile['id'] == user_id:
+#             # Если аккаунт пользователя удалён
+#             if profile['first_name'] == 'DELETED':
+#                 return 'EMPTY_USER' + ' ' + str(user_id)
+#             return profile['first_name'] + ' ' + profile['last_name']
 
 
 def get_date(utc_date: int) -> str:
@@ -134,81 +135,92 @@ def get_date(utc_date: int) -> str:
 
 length_chat = get_chat(count=1)['count']
 """Количество сообщений в чате"""
-print(int(ceil(length_chat / 200)))
+# print(int(ceil(length_chat / 200)))
 
 msg_mass = []
 """Массив сообщений"""
 
+users_mass = {}
+"""Список пользователей"""
+
 count_dead_msg = 0
 """Количество удалённых сообщений, на которые был дан ответ"""
 
-print("id — date — isAction — username — text — attachments — reactions — response")
+# print("id — date — isAction — username — text — attachments — reactions — response")
 
 start_time = datetime.now()
 """Время начала получения статистики"""
 for times_add in range(int(ceil(length_chat / 200))):
 
-    print(times_add)
+    # print(times_add)
     delta = 200 * times_add
     """Отступ от первого сообщения"""
     messages = get_chat(count=min(200, length_chat - delta), offset=delta)
     """count сообщений после delta"""
 
-    for item_data in messages['items']:
-        attachments = {'type': None,
-                       'value': []
-                       # Содержит в себе название файла
-                       }
-        """Прикреплённые доп. материалы"""
-        if item_data.get('attachments'):
+    for profile in messages['profiles']:
+        if users_mass.get(profile['id']):
+            continue
+        users_mass[profile['id']] = profile['first_name'] + " "
+        if profile.get('deactivated'):
+            users_mass[profile['id']] += profile['id']
+        else:
+            users_mass[profile['id']] += profile['last_name']
 
-            for attachment in item_data['attachments']:
+    for message_data in messages['items']:
+        isForwarding = True if message_data.get("fwd_messages") else False
+        """Пересылается ли сообщение"""
+
+        isAction = True if message_data.get('action') else False
+        """Является ли сообщение действием"""
+
+        attachments_type = "None"
+        """Тип прикреплённого сообщения"""
+        attachments = []
+        """Прикреплённые доп. материалы"""
+        if message_data.get('attachments'):
+
+            for attachment in message_data['attachments']:
                 if attachment['type'] == 'photo':
-                    attachments['type'] = 'photo'
-                    attachments['value'].append(
+                    attachments_type = 'photo'
+                    attachments.append(
                         (((attachment['photo']['sizes'][-1]['url']).split("/")[-1]).split("?"))[0]
                     )
                 elif attachment['type'] == 'sticker':
-                    attachments['type'] = 'sticker'
-                    attachments['value'].append(str(attachment['sticker']['sticker_id']) + ".png")
-            if attachments['type'] is None:
-                attachments = {}
-        else:
-            attachments = {}
+                    attachments_type = 'sticker'
+                    attachments.append(str(attachment['sticker']['sticker_id']) + ".png")
 
-        reactions = {}
+        reactions = [0] * (16 + 1)
         """Реакции"""
-        if item_data.get('reactions'):
+        if message_data.get('reactions'):
             # Почему-то не всегда показывает тех, кто ставил реакции
             # #1
-            for reaction in item_data['reactions']:
+            for reaction in message_data['reactions']:
+                reactions[0] += reaction['count']
                 user_list = [reaction['count']]
                 for user in reaction['user_ids']:
-                    user_list.append(get_fullname(user, messages))
+                    user_list.append(user)
                 reactions[reaction['reaction_id']] = user_list
 
-        response = {'id': None,
-                    'date': None,
-                    'user': {'id': None,
-                             'username': None,
-                             },
-                    'text': None,
-                    'attachments': {'type': None,
+        response = {'id': -1,
+                    'date': -1,
+                    'user_id': -1,
+                    'text': "None",
+                    'attachments': {'type': "None",
                                     'value': []
                                     # Содержит в себе название файла
                                     }
                     }
         """Ответ на сообщение"""
-        if item_data.get('reply_message'):
-            reply = item_data['reply_message']
+        if message_data.get('reply_message'):
+            reply = message_data['reply_message']
             if reply.get('conversation_message_id'):
                 response['id'] = reply['conversation_message_id']
-            if not reply.get('conversation_message_id') or response['id'] == 0:
-                response['id'] = f'f{count_dead_msg}'
+            if not reply.get('conversation_message_id') or response['id'] is None:
+                response['id'] = int(f'404404{count_dead_msg}')
                 count_dead_msg += 1
-            response['date'] = get_date(reply['date'])
-            response['user']['id'] = reply['from_id']
-            response['user']['username'] = get_fullname(reply['from_id'], messages)
+            response['date'] = reply['date']
+            response['user_id'] = reply['from_id']
             response['text'] = reply['text']
 
             for attachment in reply['attachments']:
@@ -220,29 +232,30 @@ for times_add in range(int(ceil(length_chat / 200))):
                 elif attachment['type'] == 'sticker':
                     response['attachments']['type'] = 'sticker'
                     response['attachments']['value'].append(str(attachment['sticker']['sticker_id']) + ".png")
-            if response['attachments']['type'] is None:
-                response['attachments'] = {}
-        else:
-            response = {}
 
-        item = {'id': item_data['id'],
-                'date': get_date(item_data['date']),
-                'isAction': item_data.get('action'),
-                'user': {'id': item_data['from_id'],
-                         'username': get_fullname(item_data['from_id'], messages)
-                         },
-                'text': item_data['text'],
-                'attachments': attachments,
-                'reactions': reactions,
-                'response': response
-                }
+        message = {'id': message_data['id'],
+                   'date': message_data['date'],
+                   'isAction': isAction,
+                   'isForwarding': isForwarding,
+                   'id_user': message_data['from_id'],
+                   'text': message_data['text'],
+                   'attachments_type': attachments_type,
+                   'attachments': attachments,
+                   'reactions': reactions,
+                   'response_id': response['id'],
+                   'response_date': response['date'],
+                   'response_id_user': response['user_id'],
+                   'response_text': response['text'],
+                   'response_attachments_type': response['attachments']['type'],
+                   'response_attachments': response['attachments']['value']
+                   }
         """Сообщение"""
 
-        msg_mass.append(item)
+        msg_mass.append(message)
 
         # Загрузка доп данных
-        if SHOULD_DOWNLOAD and item_data.get('attachments'):
-            for attachment in item_data['attachments']:
+        if SHOULD_DOWNLOAD and message_data.get('attachments'):
+            for attachment in message_data['attachments']:
                 if attachment['type'] == 'photo':
                     download_image(attachment['photo']['sizes'][-1]['url'])
                 elif attachment['type'] == 'sticker':
@@ -250,12 +263,9 @@ for times_add in range(int(ceil(length_chat / 200))):
 
 end_time = datetime.now()
 """Время завершения программы получения статистики"""
-print()
 print(end_time - start_time)
-print()
 
-for i in range(500):
-    print(msg_mass[i])
+users_df = pd.DataFrame(users_mass.items(), columns=['id', 'username'])
+chat_df = pd.DataFrame(msg_mass)
 
-# for msg in msg_mass:
-#     print(msg)
+users_df
