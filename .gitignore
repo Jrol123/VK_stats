@@ -2,8 +2,8 @@
 
 ## Files ##
 
-.env
-.csv
+*.env
+*.csv
 
 ## Folders ##
 
