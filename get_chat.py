@@ -162,7 +162,7 @@ for times_add in range(int(ceil(length_chat / 200))):
         if users_mass.get(profile['id']):
             continue
         users_mass[profile['id']] = profile['first_name'] + " "
-        if profile.get('deleted'):
+        if profile.get('deactivated'):
             users_mass[profile['id']] += profile['id']
         else:
             users_mass[profile['id']] += profile['last_name']
