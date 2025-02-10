@@ -1,7 +1,8 @@
 DateTime~=5.3
 python-dotenv~=1.0.1
 vk_api~=11.9.9
-urllib3~=2.2
+requests~=2.31
 CairoSVG~=2.7
 pandas~=2.2.1
 pytz~=2024.1
+matplotlib~=3.10
